@@ -3,35 +3,48 @@ ESX = nil
 TriggerEvent('esx:getSharedObject', function(obj) ESX = obj end)
 
 
-TriggerEvent('es:addGroupCommand', 'comserv', 'admin', function(source, args, user)
-	if args[1] and GetPlayerName(args[1]) ~= nil and tonumber(args[2]) then
-		TriggerEvent('esx_communityservice:sendToCommunityService', tonumber(args[1]), tonumber(args[2]))
-	else
-		TriggerClientEvent('chat:addMessage', source, { args = { _U('system_msn'), _U('invalid_player_id_or_actions') } } )
-	end
-end, function(source, args, user)
-	TriggerClientEvent('chat:addMessage', source, { args = { _U('system_msn'), _U('insufficient_permissions') } })
-end, {help = _U('give_player_community'), params = {{name = "id", help = _U('target_id')}, {name = "actions", help = _U('action_count_suggested')}}})
-_U('system_msn')
+RegisterCommand('comserv', function(source, args, user)
+	local sourcexPlayer = ESX.GetPlayerFromId(source)
 
-
-TriggerEvent('es:addGroupCommand', 'endcomserv', 'admin', function(source, args, user)
-	if args[1] then
-		if GetPlayerName(args[1]) ~= nil then
-			TriggerEvent('esx_communityservice:endCommunityServiceCommand', tonumber(args[1]))
+	if havePermission(sourcexPlayer) then
+		if args[1] and GetPlayerName(args[1]) ~= nil and tonumber(args[2]) then
+			TriggerEvent('esx_communityservice:sendToCommunityService', tonumber(args[1]), tonumber(args[2]))
 		else
-			TriggerClientEvent('chat:addMessage', source, { args = { _U('system_msn'), _U('invalid_player_id')  } } )
+			TriggerClientEvent('chat:addMessage', source, { args = { _U('system_msn'), _U('invalid_player_id_or_actions') } } )
 		end
 	else
-		TriggerEvent('esx_communityservice:endCommunityServiceCommand', source)
+		TriggerClientEvent('chat:addMessage', source, { args = { _U('system_msn'), _U('insufficient_permissions') } })
 	end
-end, function(source, args, user)
-	TriggerClientEvent('chat:addMessage', source, { args = { _U('system_msn'), _U('insufficient_permissions') } })
-end, {help = _U('unjail_people'), params = {{name = "id", help = _U('target_id')}}})
+end, true, { 
+		help = _U('give_player_community'), validate= true, arguments = {
+			{name = "id", help = _U('target_id'), type = 'player'},
+			{name = "actions", help = _U('action_count_suggested'), type = 'number'}
+		}
+	}
+)
 
+RegisterCommand('endcomserv', function(source, args, user)
+	local sourcexPlayer = ESX.GetPlayerFromId(source)
 
-
-
+	if havePermission(sourcexPlayer) then
+		if args[1] then
+			if GetPlayerName(args[1]) ~= nil then
+				TriggerEvent('esx_communityservice:endCommunityServiceCommand', tonumber(args[1]))
+			else
+				TriggerClientEvent('chat:addMessage', source, { args = { _U('system_msn'), _U('invalid_player_id')  } } )
+			end
+		else
+			TriggerEvent('esx_communityservice:endCommunityServiceCommand', source)
+		end
+	else
+		TriggerClientEvent('chat:addMessage', source, { args = { _U('system_msn'), _U('insufficient_permissions') } })
+	end
+end, true, {
+	help = _U('unjail_people'), validate = true,  arguments = {
+			{ name = "id", help = _U('target_id'), type = 'player'}
+		}
+	}
+)
 
 RegisterServerEvent('esx_communityservice:endCommunityServiceCommand')
 AddEventHandler('esx_communityservice:endCommunityServiceCommand', function(source)
@@ -45,10 +58,6 @@ RegisterServerEvent('esx_communityservice:finishCommunityService')
 AddEventHandler('esx_communityservice:finishCommunityService', function()
 	releaseFromCommunityService(source)
 end)
-
-
-
-
 
 RegisterServerEvent('esx_communityservice:completeService')
 AddEventHandler('esx_communityservice:completeService', function()
@@ -70,9 +79,6 @@ AddEventHandler('esx_communityservice:completeService', function()
 	end)
 end)
 
-
-
-
 RegisterServerEvent('esx_communityservice:extendService')
 AddEventHandler('esx_communityservice:extendService', function()
 
@@ -93,11 +99,6 @@ AddEventHandler('esx_communityservice:extendService', function()
 		end
 	end)
 end)
-
-
-
-
-
 
 RegisterServerEvent('esx_communityservice:sendToCommunityService')
 AddEventHandler('esx_communityservice:sendToCommunityService', function(target, actions_count)
@@ -125,23 +126,6 @@ AddEventHandler('esx_communityservice:sendToCommunityService', function(target, 
 	TriggerClientEvent('esx_communityservice:inCommunityService', target, actions_count)
 end)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 RegisterServerEvent('esx_communityservice:checkIfSentenced')
 AddEventHandler('esx_communityservice:checkIfSentenced', function()
 	local _source = source -- cannot parse source to client trigger for some weird reason
@@ -156,12 +140,6 @@ AddEventHandler('esx_communityservice:checkIfSentenced', function()
 		end
 	end)
 end)
-
-
-
-
-
-
 
 function releaseFromCommunityService(target)
 
@@ -179,4 +157,25 @@ function releaseFromCommunityService(target)
 	end)
 
 	TriggerClientEvent('esx_communityservice:finishCommunityService', target)
+end
+
+function havePermission(xPlayer, exclude)	-- you can exclude rank(s) from having permission to specific commands 	[exclude only take tables]
+	if exclude and type(exclude) ~= 'table' then exclude = nil;print("^3[esx_admin] ^1ERROR ^0exclude argument is not table..^0") end	-- will prevent from errors if you pass wrong argument
+
+	local playerGroup = xPlayer.getGroup()
+	for k,v in pairs(Config.adminRanks) do
+		if v == playerGroup then
+			if not exclude then
+				return true
+			else
+				for a,b in pairs(exclude) do
+					if b == v then
+						return false
+					end
+				end
+				return true
+			end
+		end
+	end
+	return false
 end

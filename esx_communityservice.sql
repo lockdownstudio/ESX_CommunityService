@@ -1,4 +1,4 @@
-USE `essentialmode`;
+USE `es_extended`;
 
 CREATE TABLE communityservice (
 	identifier VARCHAR(100) NOT NULL,
